@@ -221,7 +221,7 @@ namespace TextEditor
         private void TxtBox_TextChanged(object sender, EventArgs e)
         {
             textWasChanged = true;
-            OnContentChanged.Invoke(txtBox);
+            OnContentChanged?.Invoke(txtBox);
         }
 
         // Обработка нажатий некоторых клавиш
