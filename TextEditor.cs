@@ -227,7 +227,6 @@ namespace TextEditor
         // Обработка нажатий некоторых клавиш
         private void TxtBox_KeyDown(object sender, KeyEventArgs e)
         {
-            // CTRL-C. Скопируем в буфер обмена.
             if (e.Control)
             {
                 switch (e.KeyCode)
@@ -266,7 +265,6 @@ namespace TextEditor
                         break;
                 }
             }
-
         }
 
         // Выравнивание текста по правому краю
