@@ -5,7 +5,7 @@ using System.Drawing.Text;
 using System.IO;
 using System.Windows.Forms;
 
-namespace simple_database
+namespace TextEditor
 {
 
     public class TextEditor : Panel
