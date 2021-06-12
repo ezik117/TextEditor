@@ -5,6 +5,7 @@ using System.Drawing.Text;
 using System.IO;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace TextEditor
 {
@@ -218,6 +219,23 @@ namespace TextEditor
             btnSuperscript.Click += BtnSuperscript_Click;
             tsMenu.Items.Add(btnSuperscript);
 
+            ToolStripDropDownButton btnTextCaps = new ToolStripDropDownButton();
+            btnTextCaps.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            btnTextCaps.Image = Images.Images["caps"];
+            ToolStripMenuItem mnuTextToSentence = new ToolStripMenuItem("Как в предложениях.");
+            mnuTextToSentence.Click += MnuTextToSentence_Click;
+            ToolStripMenuItem mnuTextToUpper = new ToolStripMenuItem("ВСЕ ЗАГЛАВНЫЕ");
+            mnuTextToUpper.Click += MnuTextToUpper_Click;
+            ToolStripMenuItem mnuTextToLower = new ToolStripMenuItem("все прописные");
+            mnuTextToLower.Click += MnuTextToLower_Click;
+            ToolStripMenuItem mnuTextChangeCaps = new ToolStripMenuItem("иЗМЕНИТЬ РЕГИСТР");
+            mnuTextChangeCaps.Click += MnuTextChangeCaps_Click;
+            btnTextCaps.DropDownItems.Add(mnuTextToSentence);
+            btnTextCaps.DropDownItems.Add(mnuTextToUpper);
+            btnTextCaps.DropDownItems.Add(mnuTextToLower);
+            btnTextCaps.DropDownItems.Add(mnuTextChangeCaps);
+            tsMenu.Items.Add(btnTextCaps);
+
             ToolStripButton btnInsertPicture = new ToolStripButton(Images.Images["picture"]);
             btnInsertPicture.Click += BtnInsertPicture_Click;
             tsMenu.Items.Add(btnInsertPicture);
@@ -409,6 +427,57 @@ namespace TextEditor
             txtBox.Focus();
         }
 
+        // Сделать текст как в предложениях
+        private void MnuTextToSentence_Click(object sender, EventArgs e)
+        {
+            ResetControls();
+
+            // Отключим вывод в окно
+            WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+            lockControls = true;
+
+            int start = txtBox.SelectionStart;
+            int len = txtBox.SelectionLength;
+
+            foreach (Match m in Regex.Matches(txtBox.SelectedText, @"(\S.+?[.!?])(?=\s+|$)", RegexOptions.Multiline))
+            {
+                txtBox.Select(start + m.Index, 1);
+                txtBox.SelectedText = txtBox.SelectedText.ToUpper();
+            }
+
+            txtBox.Select(start, len);
+
+            // Включим вывод в окно
+            WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
+            lockControls = false;
+            txtBox.Refresh();
+
+            ShowSelectionProperties();
+            txtBox.Focus();
+        }
+
+        // Все буквы к прописным
+        private void MnuTextToLower_Click(object sender, EventArgs e)
+        {
+            ResetControls();
+
+            txtBox.SelectedText = txtBox.SelectedText.ToLower();
+
+            ShowSelectionProperties();
+            txtBox.Focus();
+        }
+
+        // Все буквы к заглавным
+        private void MnuTextToUpper_Click(object sender, EventArgs e)
+        {
+            ResetControls();
+
+            txtBox.SelectedText = txtBox.SelectedText.ToUpper();
+
+            ShowSelectionProperties();
+            txtBox.Focus();
+        }
+
         // Верхний регистр текста
         private void BtnSuperscript_Click(object sender, EventArgs e)
         {
@@ -434,6 +503,42 @@ namespace TextEditor
                 txtBox.SelectionFont = fnt;
                 txtBox.SelectionCharOffset = 0;
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
+        }
+
+        private void MnuTextChangeCaps_Click(object sender, EventArgs e)
+        {
+            ResetControls();
+
+            // Отключим вывод в окно
+            WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+            lockControls = true;
+
+            int start = txtBox.SelectionStart;
+            int len = txtBox.SelectionLength;
+            int end = txtBox.SelectionStart + txtBox.SelectionLength;
+
+            for (int i = txtBox.SelectionStart; i < end; i++)
+            {
+                txtBox.Select(i, 1);
+                if (char.IsUpper(txtBox.SelectedText[0]))
+                {
+                    txtBox.SelectedText = txtBox.SelectedText.ToLower();
+                }
+                else
+                {
+                    txtBox.SelectedText = txtBox.SelectedText.ToUpper();
+                }
+            }
+
+            txtBox.Select(start, len);
+
+            // Включим вывод в окно
+            WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
+            lockControls = false;
+            txtBox.Refresh();
 
             ShowSelectionProperties();
             txtBox.Focus();
@@ -873,7 +978,8 @@ namespace TextEditor
             { "picture", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,176,73,68,65,84,56,79,205,146,209,13,195,32,12,68,217,137,157,216,137,5,58,76,229,73,80,63,202,4,174,31,152,182,84,74,72,213,143,230,164,139,67,236,59,140,67,56,23,178,136,166,44,26,119,72,158,58,151,204,160,160,214,170,114,211,70,222,63,9,48,113,201,12,12,128,72,178,71,212,100,75,62,189,19,80,231,146,25,195,64,37,52,147,46,162,229,224,177,167,151,6,93,56,24,53,103,35,241,91,131,203,245,110,98,219,29,3,226,17,3,6,133,112,12,178,181,158,216,93,158,131,221,53,232,162,209,178,179,25,116,146,63,100,144,90,219,47,182,245,202,128,255,203,49,41,218,164,229,55,239,1,231,252,233,38,50,160,82,202,146,212,185,228,239,8,225,1,78,102,157,242,222,205,245,144,0,0,0,0,73,69,78,68,174,66,96,130 } },
             { "aligncenter", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,130,73,68,65,84,56,79,221,208,33,18,0,17,24,5,96,167,144,36,77,150,84,93,148,53,87,112,73,93,114,150,127,231,25,140,221,176,97,135,178,111,230,197,127,62,15,251,81,82,74,52,26,99,156,13,33,180,122,239,201,57,215,106,173,165,126,182,57,181,214,155,12,117,200,80,141,49,84,74,57,164,191,237,133,172,181,110,85,74,145,148,242,208,43,176,111,168,171,12,117,200,57,231,67,250,186,119,149,161,162,66,8,226,156,207,246,179,205,193,31,172,123,161,62,229,115,127,240,45,140,93,229,231,125,173,9,80,235,60,0,0,0,0,73,69,78,68,174,66,96,130 } },
             { "alignleft", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,118,73,68,65,84,56,79,221,143,33,14,0,33,12,4,121,5,10,133,67,163,176,120,36,26,199,23,120,126,47,37,45,217,32,78,65,114,185,73,198,209,12,107,126,196,24,131,212,222,251,178,181,54,173,181,82,41,101,154,115,38,57,59,8,86,181,204,85,45,223,169,34,111,123,83,74,20,99,156,134,16,200,123,127,225,55,88,230,42,150,185,202,202,211,75,224,94,44,243,94,214,57,71,214,218,165,156,29,100,223,171,85,44,203,211,79,97,204,3,77,223,112,51,201,211,201,87,0,0,0,0,73,69,78,68,174,66,96,130 } },
-            { "alignright", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,117,73,68,65,84,56,79,221,144,33,14,192,32,12,69,57,5,10,133,67,163,176,120,36,26,199,21,56,126,151,54,124,66,200,50,181,38,203,94,242,28,205,163,53,63,98,140,65,176,247,190,108,173,137,181,86,42,165,136,57,103,154,99,74,160,204,85,148,185,154,82,18,99,140,10,63,120,218,23,85,54,132,64,222,123,229,27,112,117,47,115,21,101,231,156,56,159,190,200,221,165,81,69,217,90,187,156,99,74,156,251,30,101,248,9,140,185,0,162,233,107,26,128,68,158,131,0,0,0,0,73,69,78,68,174,66,96,130 } }
+            { "alignright", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,117,73,68,65,84,56,79,221,144,33,14,192,32,12,69,57,5,10,133,67,163,176,120,36,26,199,21,56,126,151,54,124,66,200,50,181,38,203,94,242,28,205,163,53,63,98,140,65,176,247,190,108,173,137,181,86,42,165,136,57,103,154,99,74,160,204,85,148,185,154,82,18,99,140,10,63,120,218,23,85,54,132,64,222,123,229,27,112,117,47,115,21,101,231,156,56,159,190,200,221,165,81,69,217,90,187,156,99,74,156,251,30,101,248,9,140,185,0,162,233,107,26,128,68,158,131,0,0,0,0,73,69,78,68,174,66,96,130 } },
+            { "caps", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,200,73,68,65,84,56,79,237,145,177,13,132,48,12,69,51,72,170,116,212,84,180,233,41,169,233,88,129,54,85,70,136,196,54,12,64,159,1,210,165,99,2,31,223,231,64,78,52,92,121,210,61,41,138,253,191,101,155,160,254,220,233,251,158,112,36,253,142,156,51,13,195,64,77,211,16,98,145,159,19,66,160,101,89,200,24,67,136,69,62,217,182,141,61,220,34,125,210,117,29,79,158,166,137,16,139,124,226,189,231,237,112,139,116,145,82,34,107,45,197,24,121,186,214,154,160,137,205,20,31,158,72,23,232,10,163,62,245,36,52,171,189,219,103,96,181,122,226,56,142,188,174,164,60,96,158,103,222,0,158,115,238,237,209,65,219,182,72,248,198,27,172,235,202,121,209,144,227,241,240,135,224,151,122,174,67,3,176,239,59,155,79,14,106,11,71,163,223,70,169,23,244,127,210,232,229,194,147,21,0,0,0,0,73,69,78,68,174,66,96,130 } }
         };
     }
 
