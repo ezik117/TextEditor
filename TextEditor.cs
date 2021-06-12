@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Text;
 using System.IO;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace TextEditor
 {
@@ -70,7 +71,9 @@ namespace TextEditor
         private ToolStripButton btnAlignCenter; // ссылка на кнопку
         private ToolStripButton btnAlignRight; // ссылка на кнопку
 
-        private FormatterData formatter;
+        private FormatterData formatter; // конейнер для хранения формата при копировании по образцу
+
+        private bool lockControls; // используется для отключения реагирования RichTextBox на события при изменении формата
 
         /// <summary>
         /// Конструктор. Создает объект для простого редактирования текста.
@@ -95,18 +98,21 @@ namespace TextEditor
             this.formatter.enabled = false;
 
             txtBox = new RichTextBox();
+            lockControls = false;
             txtBox.Parent = this;
             txtBox.Dock = DockStyle.Fill;
             txtBox.AcceptsTab = true;
             txtBox.HideSelection = false;
             txtBox.Multiline = true;
             txtBox.BorderStyle = BorderStyle.Fixed3D;
-            txtBox.Font = new Font("Lucida Console", 10F, FontStyle.Regular);
-            txtBox.Clear();
-            txtBox.SelectionChanged += TxtBox_SelectionChanged;
+            txtBox.DetectUrls = true;
+            txtBox.AutoWordSelection = false;
+            this.Clear();
             txtBox.TextChanged += TxtBox_TextChanged;
             txtBox.KeyDown += TxtBox_KeyDown;
             txtBox.MouseUp += TxtBox_MouseUp;
+            txtBox.MouseDown += TxtBox_MouseDown;
+            System.Diagnostics.Debug.WriteLine(txtBox.SelectionFont.SizeInPoints.ToString());
 
             textColor = Color.Black;
             textBackgroundColor = Color.Yellow;
@@ -217,9 +223,28 @@ namespace TextEditor
             textWasChanged = false;
         }
 
+        /// <summary>
+        /// Очищает текст в RichTextBox и устанавливает шрифт по умолчанию.
+        /// Если шрифт не задан, то будет произведен сброс со шрифтом LucidaConsole, 10.
+        /// Не вызвывайте свойство txtBox.Clear() напрямую!
+        /// </summary>
+        /// <param name="setFont">Шрифт по умолчанию.</param>
+        public void Clear(Font setFont = null)
+        {
+            txtBox.Rtf = "";
+            txtBox.Text = "";
+            txtBox.SelectAll();
+            if (setFont == null) setFont = new Font("Lucida Console", 10F, FontStyle.Regular);
+            txtBox.SelectionFont = txtBox.Font = setFont;
+        }
+
         // Пользователь изменил текст
         private void TxtBox_TextChanged(object sender, EventArgs e)
         {
+            if (lockControls) return;
+
+            ShowSelectionProperties();
+
             textWasChanged = true;
             OnContentChanged?.Invoke(txtBox);
         }
@@ -227,6 +252,8 @@ namespace TextEditor
         // Обработка нажатий некоторых клавиш
         private void TxtBox_KeyDown(object sender, KeyEventArgs e)
         {
+            ShowSelectionProperties();
+
             if (e.Control)
             {
                 switch (e.KeyCode)
@@ -267,12 +294,64 @@ namespace TextEditor
             }
         }
 
+        // Восстановить формат текста
+        private void TxtBox_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (formatter.enabled)
+            {
+                btnTextFormatter.Checked = formatter.enabled = false;
+                txtBox.SelectionFont = formatter.font;
+                txtBox.SelectionColor = formatter.txtColor;
+                txtBox.SelectionBackColor = formatter.bgColor;
+                txtBox.SelectionBullet = formatter.bullet;
+                txtBox.BulletIndent = formatter.indent;
+                txtBox.SelectionAlignment = formatter.txtAlign;
+            }
+        }
+
+        // Нажата клавиша мыши.
+        private void TxtBox_MouseDown(object sender, MouseEventArgs e)
+        {
+            ShowSelectionProperties();
+        }
+
+        // Изменена позиция каретки. Отобразим изменения на панели инструментов.
+        private void ShowSelectionProperties()
+        {
+            // отследим показания кнопок в зависимости от текста под курсором
+            if (txtBox.SelectionFont != null)
+            {
+                btnFontSize.Text = txtBox.SelectionFont.Size.ToString();
+                btnFontFamily.Text = txtBox.SelectionFont.Name;
+                btnBoldText.Checked = txtBox.SelectionFont.Bold;
+                btnItalicText.Checked = txtBox.SelectionFont.Italic;
+                btnUnderlineText.Checked = txtBox.SelectionFont.Underline;
+                btnBulletList.Checked = txtBox.SelectionBullet;
+                btnSubscript.Checked = txtBox.SelectionCharOffset < 0;
+                btnSuperscript.Checked = txtBox.SelectionCharOffset > 0;
+                btnAlignLeft.Checked = txtBox.SelectionAlignment == HorizontalAlignment.Left;
+                btnAlignCenter.Checked = txtBox.SelectionAlignment == HorizontalAlignment.Center;
+                btnAlignRight.Checked = txtBox.SelectionAlignment == HorizontalAlignment.Right;
+            }
+            else
+            {
+                btnFontSize.Text = "";
+                btnFontFamily.Text = "";
+                btnBoldText.Checked = false;
+                btnItalicText.Checked = false;
+                btnUnderlineText.Checked = false;
+            }
+        }
+
         // Выравнивание текста по правому краю
         private void BtnAlignRight_Click(object sender, EventArgs e)
         {
             btnTextFormatter.Checked = formatter.enabled = false;
 
             txtBox.SelectionAlignment = HorizontalAlignment.Right;
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Выравнивание текста по левому краю
@@ -281,6 +360,9 @@ namespace TextEditor
             btnTextFormatter.Checked = formatter.enabled = false;
 
             txtBox.SelectionAlignment = HorizontalAlignment.Left;
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Выравнивание текста по центру
@@ -289,6 +371,9 @@ namespace TextEditor
             btnTextFormatter.Checked = formatter.enabled = false;
 
             txtBox.SelectionAlignment = HorizontalAlignment.Center;
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Вставить картинку
@@ -304,6 +389,9 @@ namespace TextEditor
                 txtBox.Paste();
             }
 
+            txtBox.Focus();
+
+            ShowSelectionProperties();
             txtBox.Focus();
         }
 
@@ -332,6 +420,9 @@ namespace TextEditor
                 txtBox.SelectionFont = fnt;
                 txtBox.SelectionCharOffset = 0;
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Нижний регистр текста
@@ -359,6 +450,9 @@ namespace TextEditor
                 txtBox.SelectionFont = fnt;
                 txtBox.SelectionCharOffset = 0;
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Нажата клавиша списка
@@ -368,6 +462,9 @@ namespace TextEditor
 
             txtBox.SelectionBullet = !txtBox.SelectionBullet;
             btnBulletList.Checked = txtBox.SelectionBullet;
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Вызвать диалоговое окно редактирования параметров шрифта
@@ -381,21 +478,9 @@ namespace TextEditor
             {
                 txtBox.SelectionFont = dlg.Font;
             }
-        }
 
-        // Восстановить формат текста
-        private void TxtBox_MouseUp(object sender, MouseEventArgs e)
-        {
-            if (formatter.enabled)
-            {
-                btnTextFormatter.Checked = formatter.enabled = false;
-                txtBox.SelectionFont = formatter.font;
-                txtBox.SelectionColor = formatter.txtColor;
-                txtBox.SelectionBackColor = formatter.bgColor;
-                txtBox.SelectionBullet = formatter.bullet;
-                txtBox.BulletIndent = formatter.indent;
-                txtBox.SelectionAlignment = formatter.txtAlign;
-            }
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Сохранить текущий формат текта
@@ -410,41 +495,65 @@ namespace TextEditor
             formatter.txtAlign = txtBox.SelectionAlignment;
         }
 
-        // Изменена позиция каретки. Отобразим изменения на панели инструментов.
-        private void TxtBox_SelectionChanged(object sender, EventArgs e)
-        {
-            // отследим показания кнопок в зависимости от текста под курсором
-            if (txtBox.SelectionFont != null)
-            {
-                btnFontSize.Text = txtBox.SelectionFont.Size.ToString();
-                btnFontFamily.Text = txtBox.SelectionFont.Name;
-                btnBoldText.Checked = txtBox.SelectionFont.Bold;
-                btnItalicText.Checked = txtBox.SelectionFont.Italic;
-                btnUnderlineText.Checked = txtBox.SelectionFont.Underline;
-                btnBulletList.Checked = txtBox.SelectionBullet;
-                btnSubscript.Checked = txtBox.SelectionCharOffset < 0;
-                btnSuperscript.Checked = txtBox.SelectionCharOffset > 0;
-                btnAlignLeft.Checked = txtBox.SelectionAlignment == HorizontalAlignment.Left;
-                btnAlignCenter.Checked = txtBox.SelectionAlignment == HorizontalAlignment.Center;
-                btnAlignRight.Checked = txtBox.SelectionAlignment == HorizontalAlignment.Right;
-            }
-        }
-
         // Выбран другой шрифт. Изменить текст.
         private void BtnFontFamily_SelectedIndexChanged(object sender, EventArgs e)
         {
             btnTextFormatter.Checked = formatter.enabled = false;
 
-            bool canChangeFont = true;
-            FontFamily newFontFamily = null;
-            try { newFontFamily = new FontFamily(((ToolStripComboBox)sender).Text); }
-            catch { canChangeFont = false; }
+            try
+            {
+                // проверим если фонт существует
+                bool canChangeFont = true;
+                FontFamily newFontFamily = null;
+                try { newFontFamily = new FontFamily(((ToolStripComboBox)sender).Text); }
+                catch { canChangeFont = false; }
 
-            Font fnt = txtBox.SelectionFont;
-            if (canChangeFont)
-                txtBox.SelectionFont = new Font(newFontFamily, fnt.Size, fnt.Style);
-            else
-                ((ToolStripComboBox)sender).Text = fnt.FontFamily.Name;
+                int start = txtBox.SelectionStart;
+                int len = txtBox.SelectionLength;
+                int end = txtBox.SelectionStart + txtBox.SelectionLength;
+
+                if (end != 0)
+                {
+                    // Отключим вывод в окно
+                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+                    lockControls = true;
+
+                    txtBox.Select(start, 1);
+                    Font oldFont = txtBox.SelectionFont;
+                    Font newFont = new Font(newFontFamily, oldFont.Size, oldFont.Style);
+
+                    for (int i = txtBox.SelectionStart; i < end; i++)
+                    {
+                        txtBox.Select(i, 1);
+                        if (txtBox.SelectionFont.Size != oldFont.Size)
+                        {
+                            oldFont = txtBox.SelectionFont;
+                            newFont = new Font(newFontFamily, oldFont.Size, oldFont.Style);
+                        }
+                        if (txtBox.SelectionFont.FontFamily != newFontFamily)
+                        {
+                            txtBox.SelectionFont = newFont;
+                        }
+                    }
+
+                    // Включим вывод в окно
+                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
+                    txtBox.Refresh();
+                    txtBox.Select(start, len);
+                }
+                else
+                {
+                    // меняется шритф в месте курсора
+                    txtBox.SelectionFont = new Font(newFontFamily, txtBox.SelectionFont.Size, txtBox.SelectionFont.Style);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            };
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Выбран другой размер шрифта. Изменить текст.
@@ -453,11 +562,57 @@ namespace TextEditor
             btnTextFormatter.Checked = formatter.enabled = false;
 
             bool canChangeFont = float.TryParse(((ToolStripComboBox)sender).Text, out float newSize);
-            Font fnt = txtBox.SelectionFont;
+
             if (canChangeFont)
-                txtBox.SelectionFont = new Font(fnt.FontFamily, newSize, fnt.Style);
+            {
+                int start = txtBox.SelectionStart;
+                int len = txtBox.SelectionLength;
+                int end = txtBox.SelectionStart + txtBox.SelectionLength;
+
+                if (end != 0)
+                {
+                    // Отключим вывод в окно
+                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+                    lockControls = true;
+
+                    txtBox.Select(start, 1);
+                    Font oldFont = txtBox.SelectionFont;
+                    Font newFont = new Font(oldFont.FontFamily, newSize, oldFont.Style);
+
+                    for (int i = txtBox.SelectionStart; i < end; i++)
+                    {
+                        txtBox.Select(i, 1);
+                        if (txtBox.SelectionFont.FontFamily != oldFont.FontFamily)
+                        {
+                            oldFont = txtBox.SelectionFont;
+                            newFont = new Font(oldFont.FontFamily, newSize, oldFont.Style);
+                        }
+                        if (txtBox.SelectionFont.Size != newSize)
+                        {
+                            txtBox.SelectionFont = newFont;
+                        }
+                    }
+
+                    // Включим вывод в окно
+                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+                    txtBox.Refresh();
+                    txtBox.Select(start, len);
+                }
+                else
+                {
+                    // меняется размер в месте курсора
+                    txtBox.SelectionFont = new Font(txtBox.SelectionFont.FontFamily, newSize, txtBox.SelectionFont.Style);
+                }
+            }
             else
-                ((ToolStripComboBox)sender).Text = fnt.Size.ToString();
+            {
+                ((ToolStripComboBox)sender).Text = txtBox.SelectionFont.Size.ToString();
+            }
+
+            lockControls = false;
+
+            TxtBox_TextChanged(txtBox, null);
+            txtBox.Focus();
         }
 
         // Изменить размер шрифта по ручному вводу
@@ -475,6 +630,9 @@ namespace TextEditor
             btnTextFormatter.Checked = formatter.enabled = false;
 
             txtBox.SelectionBackColor = textBackgroundColor;
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Выбор цвета выделения текста
@@ -493,6 +651,9 @@ namespace TextEditor
                     txtBox.SelectionBackColor = textBackgroundColor;
                 }
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Отрисовка кнопки выделения текста
@@ -508,6 +669,9 @@ namespace TextEditor
             btnTextFormatter.Checked = formatter.enabled = false;
 
             txtBox.SelectionColor = textColor;
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Выбор цвета текста
@@ -525,6 +689,9 @@ namespace TextEditor
                     txtBox.SelectionColor = textColor;
                 }
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Отрисовка кнопки цвета текста
@@ -543,8 +710,10 @@ namespace TextEditor
             {
                 FontStyle newFontStyle = txtBox.SelectionFont.Style ^ FontStyle.Bold;
                 txtBox.SelectionFont = new Font(txtBox.SelectionFont.FontFamily, txtBox.SelectionFont.Size, newFontStyle);
-                txtBox.Focus();
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Нажата клавиша наклонного текста
@@ -556,8 +725,10 @@ namespace TextEditor
             {
                 FontStyle newFontStyle = txtBox.SelectionFont.Style ^ FontStyle.Italic;
                 txtBox.SelectionFont = new Font(txtBox.SelectionFont.FontFamily, txtBox.SelectionFont.Size, newFontStyle);
-                txtBox.Focus();
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Нажата клавиша подчеркнутого текста
@@ -569,8 +740,10 @@ namespace TextEditor
             {
                 FontStyle newFontStyle = txtBox.SelectionFont.Style ^ FontStyle.Underline;
                 txtBox.SelectionFont = new Font(txtBox.SelectionFont.FontFamily, txtBox.SelectionFont.Size, newFontStyle);
-                txtBox.Focus();
             }
+
+            ShowSelectionProperties();
+            txtBox.Focus();
         }
 
         // Данные для форматера текста
@@ -682,5 +855,13 @@ namespace TextEditor
             { "alignleft", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,118,73,68,65,84,56,79,221,143,33,14,0,33,12,4,121,5,10,133,67,163,176,120,36,26,199,23,120,126,47,37,45,217,32,78,65,114,185,73,198,209,12,107,126,196,24,131,212,222,251,178,181,54,173,181,82,41,101,154,115,38,57,59,8,86,181,204,85,45,223,169,34,111,123,83,74,20,99,156,134,16,200,123,127,225,55,88,230,42,150,185,202,202,211,75,224,94,44,243,94,214,57,71,214,218,165,156,29,100,223,171,85,44,203,211,79,97,204,3,77,223,112,51,201,211,201,87,0,0,0,0,73,69,78,68,174,66,96,130 } },
             { "alignright", new byte[] { 137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,16,0,0,0,16,8,6,0,0,0,31,243,255,97,0,0,0,1,115,82,71,66,0,174,206,28,233,0,0,0,4,103,65,77,65,0,0,177,143,11,252,97,5,0,0,0,9,112,72,89,115,0,0,14,195,0,0,14,195,1,199,111,168,100,0,0,0,117,73,68,65,84,56,79,221,144,33,14,192,32,12,69,57,5,10,133,67,163,176,120,36,26,199,21,56,126,151,54,124,66,200,50,181,38,203,94,242,28,205,163,53,63,98,140,65,176,247,190,108,173,137,181,86,42,165,136,57,103,154,99,74,160,204,85,148,185,154,82,18,99,140,10,63,120,218,23,85,54,132,64,222,123,229,27,112,117,47,115,21,101,231,156,56,159,190,200,221,165,81,69,217,90,187,156,99,74,156,251,30,101,248,9,140,185,0,162,233,107,26,128,68,158,131,0,0,0,0,73,69,78,68,174,66,96,130 } }
         };
+    }
+
+    public static class WinAPI
+    {
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, int wParam, IntPtr lParam);
+
+        public const int WM_SETREDRAW = 0x000B;
     }
 }
