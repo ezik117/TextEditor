@@ -57,7 +57,7 @@ namespace TextEditor
 
         private ImageList Images;
         private Color textColor; // хранит выбранное пользователем значение цвета текста
-        private Color textBackgroundColor; // хранит выбранное пользователем значение выделения текста
+        public Color textBackgroundColor; // хранит выбранное пользователем значение выделения текста
         private ToolStripComboBox btnFontFamily; // ссылка на кнопку
         private ToolStripComboBox btnFontSize;  // ссылка на кнопку
         private ToolStripButton btnTextFormatter; // ссылка на кнопку
@@ -70,6 +70,7 @@ namespace TextEditor
         private ToolStripButton btnAlignLeft; // ссылка на кнопку
         private ToolStripButton btnAlignCenter; // ссылка на кнопку
         private ToolStripButton btnAlignRight; // ссылка на кнопку
+        BackColorsPanel bgColorsPanel; // ссылка на панель
 
         private FormatterData formatter; // конейнер для хранения формата при копировании по образцу
 
@@ -107,12 +108,10 @@ namespace TextEditor
             txtBox.BorderStyle = BorderStyle.Fixed3D;
             txtBox.DetectUrls = true;
             txtBox.AutoWordSelection = false;
-            this.Clear();
             txtBox.TextChanged += TxtBox_TextChanged;
             txtBox.KeyDown += TxtBox_KeyDown;
             txtBox.MouseUp += TxtBox_MouseUp;
             txtBox.MouseDown += TxtBox_MouseDown;
-            System.Diagnostics.Debug.WriteLine(txtBox.SelectionFont.SizeInPoints.ToString());
 
             textColor = Color.Black;
             textBackgroundColor = Color.Yellow;
@@ -152,12 +151,15 @@ namespace TextEditor
             tsMenu.Items.Add(btnTextColor);
 
             ToolStripSplitButton btnTextBgColor = new ToolStripSplitButton();
+            btnTextBgColor.Name = "btnTextBgColor";
             btnTextBgColor.Paint += BtnTextBgColor_Paint;
             btnTextBgColor.AutoSize = false;
             btnTextBgColor.Width = 34;
             btnTextBgColor.Click += BtnTextBgColor_Click; ;
             btnTextBgColor.ButtonClick += BtnTextBgColor_ButtonClick;
             tsMenu.Items.Add(btnTextBgColor);
+
+            bgColorsPanel = new BackColorsPanel(170, 1, this);
 
             tsMenu.Items.Add(new ToolStripSeparator());
 
@@ -221,6 +223,7 @@ namespace TextEditor
             tsMenu.Items.Add(btnInsertPicture);
 
             textWasChanged = false;
+            this.Clear();
         }
 
         /// <summary>
@@ -236,6 +239,8 @@ namespace TextEditor
             txtBox.SelectAll();
             if (setFont == null) setFont = new Font("Lucida Console", 10F, FontStyle.Regular);
             txtBox.SelectionFont = txtBox.Font = setFont;
+
+            ShowSelectionProperties();
         }
 
         // Пользователь изменил текст
@@ -315,6 +320,13 @@ namespace TextEditor
             ShowSelectionProperties();
         }
 
+        // Сброс всяких состояний кнопок и т.п.
+        private void ResetControls()
+        {
+            bgColorsPanel.Showed = false;
+            btnTextFormatter.Checked = formatter.enabled = false;
+        }
+
         // Изменена позиция каретки. Отобразим изменения на панели инструментов.
         private void ShowSelectionProperties()
         {
@@ -341,12 +353,14 @@ namespace TextEditor
                 btnItalicText.Checked = false;
                 btnUnderlineText.Checked = false;
             }
+
+            bgColorsPanel.Showed = false;
         }
 
         // Выравнивание текста по правому краю
         private void BtnAlignRight_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             txtBox.SelectionAlignment = HorizontalAlignment.Right;
 
@@ -357,7 +371,7 @@ namespace TextEditor
         // Выравнивание текста по левому краю
         private void BtnAlignLeft_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             txtBox.SelectionAlignment = HorizontalAlignment.Left;
 
@@ -368,7 +382,7 @@ namespace TextEditor
         // Выравнивание текста по центру
         private void BtnAlignCenter_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             txtBox.SelectionAlignment = HorizontalAlignment.Center;
 
@@ -379,7 +393,7 @@ namespace TextEditor
         // Вставить картинку
         private void BtnInsertPicture_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             OpenFileDialog dlg = new OpenFileDialog();
             if (dlg.ShowDialog() == DialogResult.OK)
@@ -398,7 +412,7 @@ namespace TextEditor
         // Верхний регистр текста
         private void BtnSuperscript_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             // restore size
             float newSize = txtBox.SelectionFont.Size;
@@ -428,7 +442,7 @@ namespace TextEditor
         // Нижний регистр текста
         private void BtnSubscript_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             // restore size
             float newSize = txtBox.SelectionFont.Size;
@@ -458,7 +472,7 @@ namespace TextEditor
         // Нажата клавиша списка
         private void BtnBulletList_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             txtBox.SelectionBullet = !txtBox.SelectionBullet;
             btnBulletList.Checked = txtBox.SelectionBullet;
@@ -470,7 +484,7 @@ namespace TextEditor
         // Вызвать диалоговое окно редактирования параметров шрифта
         private void BtnTextProperties_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             FontDialog dlg = new FontDialog();
             dlg.Font = txtBox.SelectionFont;
@@ -486,7 +500,8 @@ namespace TextEditor
         // Сохранить текущий формат текта
         private void BtnTextFormatter_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = true;
+            ResetControls();
+
             formatter.font = txtBox.SelectionFont;
             formatter.txtColor = txtBox.SelectionColor;
             formatter.bgColor = txtBox.SelectionBackColor;
@@ -498,7 +513,7 @@ namespace TextEditor
         // Выбран другой шрифт. Изменить текст.
         private void BtnFontFamily_SelectedIndexChanged(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             try
             {
@@ -512,39 +527,42 @@ namespace TextEditor
                 int len = txtBox.SelectionLength;
                 int end = txtBox.SelectionStart + txtBox.SelectionLength;
 
-                if (end != 0)
+                if (canChangeFont)
                 {
-                    // Отключим вывод в окно
-                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-                    lockControls = true;
-
-                    txtBox.Select(start, 1);
-                    Font oldFont = txtBox.SelectionFont;
-                    Font newFont = new Font(newFontFamily, oldFont.Size, oldFont.Style);
-
-                    for (int i = txtBox.SelectionStart; i < end; i++)
+                    if (end != 0)
                     {
-                        txtBox.Select(i, 1);
-                        if (txtBox.SelectionFont.Size != oldFont.Size)
-                        {
-                            oldFont = txtBox.SelectionFont;
-                            newFont = new Font(newFontFamily, oldFont.Size, oldFont.Style);
-                        }
-                        if (txtBox.SelectionFont.FontFamily != newFontFamily)
-                        {
-                            txtBox.SelectionFont = newFont;
-                        }
-                    }
+                        // Отключим вывод в окно
+                        WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+                        lockControls = true;
 
-                    // Включим вывод в окно
-                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
-                    txtBox.Refresh();
-                    txtBox.Select(start, len);
-                }
-                else
-                {
-                    // меняется шритф в месте курсора
-                    txtBox.SelectionFont = new Font(newFontFamily, txtBox.SelectionFont.Size, txtBox.SelectionFont.Style);
+                        txtBox.Select(start, 1);
+                        Font oldFont = txtBox.SelectionFont;
+                        Font newFont = new Font(newFontFamily, oldFont.Size, oldFont.Style);
+
+                        for (int i = txtBox.SelectionStart; i < end; i++)
+                        {
+                            txtBox.Select(i, 1);
+                            if (txtBox.SelectionFont.Size != oldFont.Size)
+                            {
+                                oldFont = txtBox.SelectionFont;
+                                newFont = new Font(newFontFamily, oldFont.Size, oldFont.Style);
+                            }
+                            if (txtBox.SelectionFont.FontFamily != newFontFamily)
+                            {
+                                txtBox.SelectionFont = newFont;
+                            }
+                        }
+
+                        // Включим вывод в окно
+                        WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
+                        txtBox.Refresh();
+                        txtBox.Select(start, len);
+                    }
+                    else
+                    {
+                        // меняется шритф в месте курсора
+                        txtBox.SelectionFont = new Font(newFontFamily, txtBox.SelectionFont.Size, txtBox.SelectionFont.Style);
+                    }
                 }
             }
             catch (Exception ex)
@@ -559,7 +577,7 @@ namespace TextEditor
         // Выбран другой размер шрифта. Изменить текст.
         private void BtnFontSize_SelectedIndexChanged(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             bool canChangeFont = float.TryParse(((ToolStripComboBox)sender).Text, out float newSize);
 
@@ -618,7 +636,7 @@ namespace TextEditor
         // Изменить размер шрифта по ручному вводу
         private void BtnFontSize_KeyDown(object sender, KeyEventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             if (e.KeyCode == Keys.Enter)
                 BtnFontSize_SelectedIndexChanged(sender, new EventArgs());
@@ -627,7 +645,7 @@ namespace TextEditor
         // Применение цвета выделения текста на выбранный текст
         private void BtnTextBgColor_ButtonClick(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             txtBox.SelectionBackColor = textBackgroundColor;
 
@@ -638,21 +656,23 @@ namespace TextEditor
         // Выбор цвета выделения текста
         private void BtnTextBgColor_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
+            Color a = txtBox.SelectionBackColor;
             ToolStripSplitButton btn = (ToolStripSplitButton)sender;
             if (!btn.ButtonPressed)
             {
-                ColorDialog dlg = new ColorDialog();
-                dlg.Color = txtBox.SelectionBackColor;
-                if (dlg.ShowDialog() == DialogResult.OK)
-                {
-                    textBackgroundColor = dlg.Color;
-                    txtBox.SelectionBackColor = textBackgroundColor;
-                }
-            }
+                bgColorsPanel.Showed = true;
 
-            ShowSelectionProperties();
+                //ColorDialog dlg = new ColorDialog();
+                //dlg.Color = txtBox.SelectionBackColor;
+                //dlg.CustomColors = new int[] { Color.Yellow.ToArgb() };
+                //if (dlg.ShowDialog() == DialogResult.OK)
+                //{
+                //    textBackgroundColor = dlg.Color;
+                //    txtBox.SelectionBackColor = textBackgroundColor;
+                //}
+            }
             txtBox.Focus();
         }
 
@@ -666,7 +686,7 @@ namespace TextEditor
         // Применение цвета текста на выбранный текст
         private void BtnTextColor_ButtonClick(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             txtBox.SelectionColor = textColor;
 
@@ -677,7 +697,7 @@ namespace TextEditor
         // Выбор цвета текста
         private void BtnTextColor_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             if (!((ToolStripSplitButton)sender).ButtonPressed)
             {
@@ -704,7 +724,7 @@ namespace TextEditor
         // Нажата клавиша жирного текста
         private void btnBoldText_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             if (txtBox.SelectionFont != null)
             {
@@ -719,7 +739,7 @@ namespace TextEditor
         // Нажата клавиша наклонного текста
         private void btnItalicText_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             if (txtBox.SelectionFont != null)
             {
@@ -734,7 +754,7 @@ namespace TextEditor
         // Нажата клавиша подчеркнутого текста
         private void btnUnderlineText_Click(object sender, EventArgs e)
         {
-            btnTextFormatter.Checked = formatter.enabled = false;
+            ResetControls();
 
             if (txtBox.SelectionFont != null)
             {
@@ -863,5 +883,140 @@ namespace TextEditor
         public static extern IntPtr SendMessage(IntPtr hWnd, int Msg, int wParam, IntPtr lParam);
 
         public const int WM_SETREDRAW = 0x000B;
+    }
+
+    /// <summary>
+    /// Класс для отображения панели выбора цвета заднего фона
+    /// </summary>
+    class BackColorsPanel
+    {
+        private Panel p;
+        private Panel shadow;
+        private TextEditor parent;
+
+        public bool Showed
+        {
+            get
+            {
+                return p.Visible;
+            }
+            set
+            {
+                foreach (Control c in p.Controls)
+                {
+                    if (c.GetType() == typeof(PictureBox))
+                    {
+                        if (c.BackColor == this.selectedColor)
+                            ((PictureBox)c).Tag = (int)((PictureBox)c).Tag | (int)2;
+                        else
+                            ((PictureBox)c).Tag = (int)((PictureBox)c).Tag & ~(int)2;
+                    }
+                }
+                p.Visible = shadow.Visible = value;
+            }
+        }
+
+        public Color selectedColor;
+
+        public BackColorsPanel(int x, int y, TextEditor parent)
+        {
+            this.parent = parent;
+
+            p = new Panel();
+            p.Visible = false;
+            p.Parent = parent.txtBox;
+            p.Location = new Point(x, y);
+            p.BackColor = SystemColors.Control;
+            p.BorderStyle = BorderStyle.FixedSingle;
+            p.Cursor = Cursors.Default;
+            p.Size = new Size(156, 139);
+
+
+            shadow = new Panel();
+            shadow.Visible = false;
+            shadow.Parent = parent.txtBox;
+            shadow.Location = new Point(x + 3, y + 3);
+            shadow.BackColor = Color.Gray;
+            shadow.BorderStyle = BorderStyle.None;
+            shadow.Size = new Size(156, 139);
+
+            PictureBox pb;
+            Size pb_size = new Size(24, 24);
+            Color[,] cellColor = { { Color.Yellow, Color.Lime, Color.Aqua, Color.Fuchsia, Color.Blue },
+                                   { Color.Red, Color.Navy, Color.Teal, Color.Green, Color.Purple },
+                                   { Color.Maroon, Color.Olive, Color.Gray, Color.Silver, Color.Black } }; 
+
+            for (int row = 0; row < 3; row++)
+                for (int col = 0; col < 5; col++)
+                {
+                    pb = new PictureBox();
+                    pb.Parent = p;
+                    pb.Location = new Point(5 + col * 30, 5 + row * 30);
+                    pb.Size = pb_size;
+                    pb.BorderStyle = BorderStyle.FixedSingle;
+                    pb.BackColor = cellColor[row, col];
+                    pb.Tag = 0;
+                    pb.Click += Pb_Click;
+                    pb.Paint += Pb_Paint;
+                    pb.MouseEnter += Pb_MouseEnter;
+                    pb.MouseLeave += Pb_MouseLeave;
+                }
+
+            pb = new PictureBox
+            {
+                Parent = p,
+                Location = new Point(5, 105),
+                Size = pb_size,
+                BorderStyle = BorderStyle.FixedSingle,
+                BackColor = Color.White,
+                Tag = 0
+            };
+            pb.Click += Pb_Click;
+            pb.Paint += Pb_Paint;
+            pb.MouseEnter += Pb_MouseEnter;
+            pb.MouseLeave += Pb_MouseLeave;
+
+            Label lbl = new Label();
+            lbl.Parent = p;
+            lbl.Location = new Point(35, 108);
+            lbl.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Regular);
+            lbl.Text = "без цвета";
+
+        }
+
+
+        private void Pb_MouseLeave(object sender, EventArgs e)
+        {
+            ((PictureBox)sender).Tag = (int)((PictureBox)sender).Tag & ~(int)1;
+            ((PictureBox)sender).Refresh();
+        }
+
+        private void Pb_MouseEnter(object sender, EventArgs e)
+        {
+            ((PictureBox)sender).Tag = (int)((PictureBox)sender).Tag | (int)1;
+            ((PictureBox)sender).Refresh();
+        }
+
+        private void Pb_Paint(object sender, PaintEventArgs e)
+        {
+            Rectangle outer = new Rectangle(0, 0, 21, 21);
+            Rectangle inner = new Rectangle(1, 1, 19, 19);
+
+            if ((int)((PictureBox)sender).Tag > 0)
+            {
+                e.Graphics.DrawRectangle(new Pen(Color.Red, 1), inner);
+                e.Graphics.DrawRectangle(new Pen(Color.White, 1), outer);
+            }
+        }
+
+        private void Pb_Click(object sender, EventArgs e)
+        {
+            Color c = ((PictureBox)sender).BackColor;
+            this.selectedColor = (c == Color.White ? Color.Transparent : c);
+            this.Showed = false;
+
+            parent.textBackgroundColor = this.selectedColor;
+            parent.txtBox.SelectionBackColor = this.selectedColor;
+        }
     }
 }
