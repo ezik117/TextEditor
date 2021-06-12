@@ -612,7 +612,7 @@ namespace TextEditor
                     }
 
                     // Включим вывод в окно
-                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+                    WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
                     txtBox.Refresh();
                     txtBox.Select(start, len);
                 }
