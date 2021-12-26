@@ -326,29 +326,32 @@ public class TextEditor : Panel
         {
             // нажатие SHIFT-TAB, убираем табуляцию слева на один знак табуляции или 4 пробела
             // если для табуляции были использованы пробелы
-            int startLine = txtBox.GetLineFromCharIndex(txtBox.SelectionStart);
-            int endLine = txtBox.GetLineFromCharIndex(txtBox.SelectionStart + txtBox.SelectionLength);
+            int[,] linesInfo = GetLineInfo(txtBox.Text);
+            int startLine = GetLineOfPosition(ref linesInfo, txtBox.SelectionStart);
+            int endLine = GetLineOfPosition(ref linesInfo, txtBox.SelectionStart + txtBox.SelectionLength);
 
             for (int i=startLine; i<=endLine; i++)
             {
-                if (txtBox.Lines[i].Length > 0 && txtBox.Lines[i][0] == '\t')
+                if (txtBox.Text[linesInfo[i, 0]] == '\t')
                 {
-                    int cPos = txtBox.GetFirstCharIndexFromLine(i);
-                    txtBox.Select(cPos, cPos + txtBox.Lines[i].Length);
+                    int cPos = linesInfo[i, 0];
+                    txtBox.Select(cPos, linesInfo[i, 1]);
                     txtBox.SelectedText = txtBox.SelectedText.Remove(0, 1);
+                    linesInfo = GetLineInfo(txtBox.Text);
                 }
-                else if (txtBox.Lines[i].Length > 0 && txtBox.Lines[i][0] == ' ')
+                else if (txtBox.Text[linesInfo[i, 0]] == ' ')
                 {
-                    int cPos = txtBox.GetFirstCharIndexFromLine(i);
-                    txtBox.Select(cPos, cPos + txtBox.Lines[i].Length);
+                    int cPos = linesInfo[i, 0];
+                    txtBox.Select(cPos, linesInfo[i, 1]);
                     int j = 0;
-                    while (txtBox.Lines[i][j] == ' ' && j < 4) j++;
+                    while (txtBox.Text[j + linesInfo[i, 0]] == ' ' && j < 4) j++;
                     txtBox.SelectedText = txtBox.SelectedText.Remove(0, j);
+                    linesInfo = GetLineInfo(txtBox.Text);
                 }
             }
 
-            int cPos1 = txtBox.GetFirstCharIndexFromLine(startLine);
-            int cPos2 = txtBox.GetFirstCharIndexFromLine(endLine) + txtBox.Lines[endLine].Length;
+            int cPos1 = linesInfo[startLine, 0];
+            int cPos2 = linesInfo[endLine, 0] + linesInfo[endLine, 1] - 1;
             txtBox.Select(cPos1, cPos2 - cPos1);
 
             e.SuppressKeyPress = true;
@@ -358,25 +361,53 @@ public class TextEditor : Panel
         {
             // нажатие TAB. Добавляем табуляцию слева как символ табуляции \t
             // но только если было выбрано больше одной строки
-            int startLine = txtBox.GetLineFromCharIndex(txtBox.SelectionStart);
-            int endLine = txtBox.GetLineFromCharIndex(txtBox.SelectionStart + txtBox.SelectionLength);
+            int[,] linesInfo = GetLineInfo(txtBox.Text);
+            int startLine = GetLineOfPosition(ref linesInfo, txtBox.SelectionStart);
+            int endLine = GetLineOfPosition(ref linesInfo, txtBox.SelectionStart + txtBox.SelectionLength);
 
             if (startLine != endLine)
             {
                 for (int i = startLine; i <= endLine; i++)
                 {
-                    txtBox.Select(txtBox.GetFirstCharIndexFromLine(i), 0);
+                    txtBox.Select(linesInfo[i, 0], 0);
                     txtBox.SelectedText = "\t";
+                    linesInfo = GetLineInfo(txtBox.Text);
                 }
 
-                int cPos1 = txtBox.GetFirstCharIndexFromLine(startLine);
-                int cPos2 = txtBox.GetFirstCharIndexFromLine(endLine) + txtBox.Lines[endLine].Length;
+                int cPos1 = linesInfo[startLine, 0];
+                int cPos2 = linesInfo[endLine, 0] + linesInfo[endLine, 1] - 1;
                 txtBox.Select(cPos1, cPos2 - cPos1);
 
                 e.SuppressKeyPress = true;
                 e.Handled = true;
             }
         }
+    }
+
+    // возвращает массив информации о линиях в тексте (линия это текст разделенный \r\n)
+    private int[,] GetLineInfo(string text)
+    {
+        MatchCollection mm = Regex.Matches(text, ".*\n|.+$");
+        int[,] linesInfo = new int[mm.Count, 2];
+        for (int i=0; i<mm.Count; i++)
+        {
+            linesInfo[i, 0] = mm[i].Index;
+            linesInfo[i, 1] = mm[i].Length;
+        }
+        linesInfo[mm.Count - 1, 1]++;
+
+        return linesInfo;
+    }
+
+    // Возвращает номер строки для указанной позиции символа
+    private int GetLineOfPosition(ref int[,] linesInfo, int charPosition)
+    {
+        for (int i=0; i<=linesInfo.GetUpperBound(0); i++)
+        {
+            if (linesInfo[i, 0] <= charPosition &&
+                charPosition < linesInfo[i, 0] + linesInfo[i, 1]) return i;
+        }
+        return -1;
     }
 
     // Восстановить формат текста
