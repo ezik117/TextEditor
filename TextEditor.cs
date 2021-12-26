@@ -57,18 +57,24 @@ public class TextEditor : Panel
     private ImageList Images;
     private Color textColor; // хранит выбранное пользователем значение цвета текста
     public Color textBackgroundColor; // хранит выбранное пользователем значение выделения текста
-    private ToolStripComboBox btnFontFamily; // ссылка на кнопку
-    private ToolStripComboBox btnFontSize;  // ссылка на кнопку
-    private ToolStripButton btnTextFormatter; // ссылка на кнопку
-    private ToolStripButton btnBoldText; // ссылка на кнопку
-    private ToolStripButton btnItalicText; // ссылка на кнопку
-    private ToolStripButton btnUnderlineText; // ссылка на кнопку
-    private ToolStripButton btnBulletList; // ссылка на кнопку
-    private ToolStripButton btnSubscript; // ссылка на кнопку
-    private ToolStripButton btnSuperscript; // ссылка на кнопку
-    private ToolStripButton btnAlignLeft; // ссылка на кнопку
-    private ToolStripButton btnAlignCenter; // ссылка на кнопку
-    private ToolStripButton btnAlignRight; // ссылка на кнопку
+    private ToolStripButton btnTextFormatter; // кнопка "По образцу"
+    private ToolStripButton btnBoldText; // кнопка "Жирный текст"
+    private ToolStripButton btnItalicText; // кнопка "Наклоненный текст"
+    private ToolStripButton btnUnderlineText; // кнопка "Подчеркнутый текст"
+    private ToolStripButton btnTextProperties; // кнопка "Окно свойст текста"
+    private ToolStripSplitButton btnTextColor; // кнопка "Цвет текста"
+    private ToolStripSplitButton btnTextBgColor; // кнопка "Цвет выделения текста"
+    private ToolStripComboBox btnFontFamily; // кнопка "Выбор фонта"
+    private ToolStripComboBox btnFontSize;  // кнопка "Выбор размера текста"
+    private ToolStripButton btnAlignLeft; // кнопка "Выравнивание по левому краю"
+    private ToolStripButton btnAlignCenter; // кнопка "Выравнивание по центу"
+    private ToolStripButton btnAlignRight; // кнопка "Выравнивание по правому краю"
+    private ToolStripButton btnBulletList; // кнопка "Ненумерованный список"
+    private ToolStripButton btnSubscript; // кнопка "Нижний регистр"
+    private ToolStripButton btnSuperscript; // кнопка "Верхний регистр"
+    private ToolStripDropDownButton btnTextCaps; // кнопка "Управление регистром букв"
+    private ToolStripButton btnInsertPicture; // кнопка "Вставить картинку"
+
     BackColorsPanel bgColorsPanel; // ссылка на панель
 
     private FormatterData formatter; // конейнер для хранения формата при копировании по образцу
@@ -141,7 +147,7 @@ public class TextEditor : Panel
 
         tsMenu.Items.Add(new ToolStripSeparator());
 
-        ToolStripSplitButton btnTextColor = new ToolStripSplitButton();
+        btnTextColor = new ToolStripSplitButton();
         btnTextColor.Paint += BtnTextColor_Paint;
         btnTextColor.AutoSize = false;
         btnTextColor.Width = 34;
@@ -149,7 +155,7 @@ public class TextEditor : Panel
         btnTextColor.ButtonClick += BtnTextColor_ButtonClick;
         tsMenu.Items.Add(btnTextColor);
 
-        ToolStripSplitButton btnTextBgColor = new ToolStripSplitButton();
+        btnTextBgColor = new ToolStripSplitButton();
         btnTextBgColor.Name = "btnTextBgColor";
         btnTextBgColor.Paint += BtnTextBgColor_Paint;
         btnTextBgColor.AutoSize = false;
@@ -162,7 +168,7 @@ public class TextEditor : Panel
 
         tsMenu.Items.Add(new ToolStripSeparator());
 
-        ToolStripButton btnTextProperties = new ToolStripButton(Images.Images["fontedit"]);
+        btnTextProperties = new ToolStripButton(Images.Images["fontedit"]);
         btnTextProperties.Click += BtnTextProperties_Click;
         tsMenu.Items.Add(btnTextProperties);
 
@@ -217,7 +223,7 @@ public class TextEditor : Panel
         btnSuperscript.Click += BtnSuperscript_Click;
         tsMenu.Items.Add(btnSuperscript);
 
-        ToolStripDropDownButton btnTextCaps = new ToolStripDropDownButton();
+        btnTextCaps = new ToolStripDropDownButton();
         btnTextCaps.DisplayStyle = ToolStripItemDisplayStyle.Image;
         btnTextCaps.Image = Images.Images["caps"];
         ToolStripMenuItem mnuTextToSentence = new ToolStripMenuItem("Как в предложениях.");
@@ -228,10 +234,13 @@ public class TextEditor : Panel
         mnuTextToLower.Click += MnuTextToLower_Click;
         ToolStripMenuItem mnuTextChangeCaps = new ToolStripMenuItem("иЗМЕНИТЬ РЕГИСТР");
         mnuTextChangeCaps.Click += MnuTextChangeCaps_Click;
+        ToolStripMenuItem mnuTextChangeZebra = new ToolStripMenuItem("Каждое Слово С Большой Буквы");
+        mnuTextChangeZebra.Click += MnuTextChangeZebra_Click;
         btnTextCaps.DropDownItems.Add(mnuTextToSentence);
         btnTextCaps.DropDownItems.Add(mnuTextToUpper);
         btnTextCaps.DropDownItems.Add(mnuTextToLower);
         btnTextCaps.DropDownItems.Add(mnuTextChangeCaps);
+        btnTextCaps.DropDownItems.Add(mnuTextChangeZebra);
         tsMenu.Items.Add(btnTextCaps);
 
         ToolStripButton btnInsertPicture = new ToolStripButton(Images.Images["picture"]);
@@ -487,12 +496,11 @@ public class TextEditor : Panel
 
         // Отключим вывод в окно
         WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-        lockControls = true;
 
         int start = txtBox.SelectionStart;
         int len = txtBox.SelectionLength;
 
-        foreach (Match m in Regex.Matches(txtBox.SelectedText, @"(\S.+?[.!?])(?=\s+|$)", RegexOptions.Multiline))
+        foreach (Match m in Regex.Matches(txtBox.SelectedText, @"(\S.+?[.!?])|(\S.+)", RegexOptions.Multiline))
         {
             txtBox.Select(start + m.Index, 1);
             txtBox.SelectedText = txtBox.SelectedText.ToUpper();
@@ -502,7 +510,33 @@ public class TextEditor : Panel
 
         // Включим вывод в окно
         WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
-        lockControls = false;
+        txtBox.Refresh();
+
+        ShowSelectionProperties();
+        txtBox.Focus();
+    }
+
+    // Сделать каждую первую букву в тексте заглавной
+    private void MnuTextChangeZebra_Click(object sender, EventArgs e)
+    {
+        ResetControls();
+
+        // Отключим вывод в окно
+        WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
+
+        int start = txtBox.SelectionStart;
+        int len = txtBox.SelectionLength;
+
+        foreach (Match m in Regex.Matches(txtBox.SelectedText, @"\S+", RegexOptions.Multiline))
+        {
+            txtBox.Select(start + m.Index, 1);
+            txtBox.SelectedText = txtBox.SelectedText.ToUpper();
+        }
+
+        txtBox.Select(start, len);
+
+        // Включим вывод в окно
+        WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
         txtBox.Refresh();
 
         ShowSelectionProperties();
@@ -567,7 +601,6 @@ public class TextEditor : Panel
 
         // Отключим вывод в окно
         WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-        lockControls = true;
 
         int start = txtBox.SelectionStart;
         int len = txtBox.SelectionLength;
@@ -590,7 +623,6 @@ public class TextEditor : Panel
 
         // Включим вывод в окно
         WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 1, IntPtr.Zero);
-        lockControls = false;
         txtBox.Refresh();
 
         ShowSelectionProperties();
@@ -660,6 +692,8 @@ public class TextEditor : Panel
     {
         ResetControls();
 
+        btnTextFormatter.Checked = formatter.enabled = true;
+
         formatter.font = txtBox.SelectionFont;
         formatter.txtColor = txtBox.SelectionColor;
         formatter.bgColor = txtBox.SelectionBackColor;
@@ -691,7 +725,7 @@ public class TextEditor : Panel
                 {
                     // Отключим вывод в окно
                     WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-                    lockControls = true;
+                    //lockControls = true;
 
                     txtBox.Select(start, 1);
                     Font oldFont = txtBox.SelectionFont;
@@ -749,7 +783,7 @@ public class TextEditor : Panel
             {
                 // Отключим вывод в окно
                 WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-                lockControls = true;
+                //lockControls = true;
 
                 txtBox.Select(start, 1);
                 Font oldFont = txtBox.SelectionFont;
