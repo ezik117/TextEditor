@@ -57,6 +57,8 @@ public class TextEditor : Panel
     private ImageList Images;
     private Color textColor; // хранит выбранное пользователем значение цвета текста
     public Color textBackgroundColor; // хранит выбранное пользователем значение выделения текста
+
+    // кнопки на панели
     private ToolStripButton btnTextFormatter; // кнопка "По образцу"
     private ToolStripButton btnBoldText; // кнопка "Жирный текст"
     private ToolStripButton btnItalicText; // кнопка "Наклоненный текст"
@@ -75,11 +77,13 @@ public class TextEditor : Panel
     private ToolStripDropDownButton btnTextCaps; // кнопка "Управление регистром букв"
     private ToolStripButton btnInsertPicture; // кнопка "Вставить картинку"
 
-    BackColorsPanel bgColorsPanel; // ссылка на панель
+    ContextMenuStrip cxm; // контекстное меню управления текстом
+
+    BackColorsPanel bgColorsPanel; // ссылка на панель выбора цвета
 
     private FormatterData formatter; // конейнер для хранения формата при копировании по образцу
 
-    private bool lockControls; // используется для отключения реагирования RichTextBox на события при изменении формата
+    private bool lockResetControls; // используется для отключения сброса кнопок панели в начальное состояние
 
     /// <summary>
     /// Конструктор. Создает объект для простого редактирования текста.
@@ -93,7 +97,6 @@ public class TextEditor : Panel
         {
             TextEditorImages imagesConstructor = new TextEditorImages();
             Images = imagesConstructor.Images;
-            //string s = TextEditorImages.ConvertToCodeDeclaration(images);
         }
         else
             Images = images;
@@ -104,7 +107,7 @@ public class TextEditor : Panel
         this.formatter.enabled = false;
 
         txtBox = new RichTextBox();
-        lockControls = false;
+        lockResetControls = false;
         txtBox.Parent = this;
         txtBox.Dock = DockStyle.Fill;
         txtBox.AcceptsTab = true;
@@ -243,12 +246,79 @@ public class TextEditor : Panel
         btnTextCaps.DropDownItems.Add(mnuTextChangeZebra);
         tsMenu.Items.Add(btnTextCaps);
 
-        ToolStripButton btnInsertPicture = new ToolStripButton(Images.Images["picture"]);
+        btnInsertPicture = new ToolStripButton(Images.Images["picture"]);
         btnInsertPicture.Click += BtnInsertPicture_Click;
         tsMenu.Items.Add(btnInsertPicture);
 
+        cxm = new ContextMenuStrip();
+        ToolStripMenuItem mnuItemUndo = new ToolStripMenuItem("Отменить");
+        mnuItemUndo.Click += MnuItem_Undo_Click;
+        cxm.Items.Add(mnuItemUndo);
+        cxm.Items.Add(new ToolStripSeparator());
+        ToolStripMenuItem mnuItemCut = new ToolStripMenuItem("Вырезать");
+        mnuItemCut.Click += MnuItem_Cut_Click;
+        cxm.Items.Add(mnuItemCut);
+        ToolStripMenuItem mnuItemCopy = new ToolStripMenuItem("Копировать");
+        mnuItemCopy.Click += MnuItem_Copy_Click;
+        cxm.Items.Add(mnuItemCopy);
+        ToolStripMenuItem mnuItemPaste = new ToolStripMenuItem("Вставить");
+        mnuItemPaste.Click += MnuItem_Paste_Click;
+        cxm.Items.Add(mnuItemPaste);
+        ToolStripMenuItem mnuItemDelete = new ToolStripMenuItem("Удалить");
+        mnuItemDelete.Click += MnuItem_Delete_Click;
+        cxm.Items.Add(mnuItemDelete);
+        cxm.Items.Add(new ToolStripSeparator());
+        ToolStripMenuItem mnuItemSelectAll = new ToolStripMenuItem("Выделить все");
+        mnuItemSelectAll.Click += MnuItem_SelectAll_Click;
+        cxm.Items.Add(mnuItemSelectAll);
+
+        txtBox.ContextMenuStrip = cxm;
+
         textWasChanged = false;
         this.Clear();
+    }
+
+    // Контекстное меню. Отменить последнюю операцию.
+    private void MnuItem_Undo_Click(object sender, EventArgs e)
+    {
+        txtBox.Undo();
+    }
+
+    // Контекстное меню. Вырезать.
+    private void MnuItem_Cut_Click(object sender, EventArgs e)
+    {
+        //var clipData = new DataObject();
+        //clipData.SetText(txtBox.SelectedRtf, TextDataFormat.Rtf);
+        //clipData.SetText(txtBox.SelectedText.Replace("\n", "\r\n"), TextDataFormat.Text);
+        //Clipboard.SetDataObject(clipData);
+
+        txtBox.Copy();
+
+        txtBox.SelectedText = "";
+    }
+
+    // Контекстное меню. Копировать.
+    private void MnuItem_Copy_Click(object sender, EventArgs e)
+    {
+        if (txtBox.SelectedText.Length != 0) txtBox.Copy();
+    }
+
+    // Контекстное меню. Отменить последнюю операцию.
+    private void MnuItem_Paste_Click(object sender, EventArgs e)
+    {
+        txtBox.Paste();
+    }
+
+    // Контекстное меню. Удалить.
+    private void MnuItem_Delete_Click(object sender, EventArgs e)
+    {
+        txtBox.SelectedText = "";
+    }
+
+    // Контекстное меню. Выделить все.
+    private void MnuItem_SelectAll_Click(object sender, EventArgs e)
+    {
+        txtBox.SelectAll();
     }
 
     /// <summary>
@@ -271,8 +341,6 @@ public class TextEditor : Panel
     // Пользователь изменил текст
     private void TxtBox_TextChanged(object sender, EventArgs e)
     {
-        if (lockControls) return;
-
         ShowSelectionProperties();
 
         textWasChanged = true;
@@ -288,14 +356,6 @@ public class TextEditor : Panel
         {
             switch (e.KeyCode)
             {
-                case Keys.C:
-                    DataObject dto = new DataObject();
-                    dto.SetText(txtBox.SelectedRtf, TextDataFormat.Rtf);
-                    dto.SetText(txtBox.SelectedText, TextDataFormat.UnicodeText);
-                    Clipboard.Clear();
-                    Clipboard.SetDataObject(dto);
-                    e.SuppressKeyPress = true;
-                    break;
                 case Keys.B:
                     btnBoldText.PerformClick();
                     e.SuppressKeyPress = true;
@@ -434,6 +494,8 @@ public class TextEditor : Panel
     // Сброс всяких состояний кнопок и т.п.
     private void ResetControls()
     {
+        if (lockResetControls) return;
+
         bgColorsPanel.Showed = false;
         btnTextFormatter.Checked = formatter.enabled = false;
     }
@@ -441,6 +503,8 @@ public class TextEditor : Panel
     // Изменена позиция каретки. Отобразим изменения на панели инструментов.
     private void ShowSelectionProperties()
     {
+        lockResetControls = true;
+
         // отследим показания кнопок в зависимости от текста под курсором
         if (txtBox.SelectionFont != null)
         {
@@ -466,6 +530,8 @@ public class TextEditor : Panel
         }
 
         bgColorsPanel.Showed = false;
+
+        lockResetControls = false;
     }
 
     // Выравнивание текста по правому краю
@@ -756,7 +822,6 @@ public class TextEditor : Panel
                 {
                     // Отключим вывод в окно
                     WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-                    //lockControls = true;
 
                     txtBox.Select(start, 1);
                     Font oldFont = txtBox.SelectionFont;
@@ -814,7 +879,6 @@ public class TextEditor : Panel
             {
                 // Отключим вывод в окно
                 WinAPI.SendMessage(txtBox.Handle, WinAPI.WM_SETREDRAW, 0, IntPtr.Zero);
-                //lockControls = true;
 
                 txtBox.Select(start, 1);
                 Font oldFont = txtBox.SelectionFont;
@@ -849,8 +913,6 @@ public class TextEditor : Panel
         {
             ((ToolStripComboBox)sender).Text = txtBox.SelectionFont.Size.ToString();
         }
-
-        lockControls = false;
 
         TxtBox_TextChanged(txtBox, null);
         txtBox.Focus();
