@@ -73,5 +73,5 @@ public Form1()
 }
 ```
 
-![Sample of interface1](https://github.com/ezik117/TextEditor/blob/master/screenshot1.png?raw=true)
-![Sample of interface2](https://github.com/ezik117/TextEditor/blob/master/screenshot2.png?raw=true)
+![Sample of interface1](https://github.com/ezik117/TextEditor/blob/master/README_files/screenshot1.png?raw=true)
+![Sample of interface2](https://github.com/ezik117/TextEditor/blob/master/README_files/screenshot2.png?raw=true)
