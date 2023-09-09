@@ -6,6 +6,7 @@ using System.IO;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace TextEditorNS
 {
@@ -284,12 +285,25 @@ namespace TextEditorNS
             ToolStripMenuItem mnuItemCut = new ToolStripMenuItem("Вырезать");
             mnuItemCut.Click += MnuItem_Cut_Click;
             cxm.Items.Add(mnuItemCut);
-            ToolStripMenuItem mnuItemCopy = new ToolStripMenuItem("Копировать");
-            mnuItemCopy.Click += MnuItem_Copy_Click;
+            ToolStripMenuItem mnuItemCopy = new ToolStripMenuItem("Копирование");
             cxm.Items.Add(mnuItemCopy);
-            ToolStripMenuItem mnuItemPaste = new ToolStripMenuItem("Вставить");
-            mnuItemPaste.Click += MnuItem_Paste_Click;
+            ToolStripMenuItem mnuItemCopy_Copy = new ToolStripMenuItem("Копировать (CTRL-C)");
+            mnuItemCopy_Copy.Click += MnuItem_Copy_Copy_Click;
+            mnuItemCopy.DropDownItems.Add(mnuItemCopy_Copy);
+            ToolStripMenuItem mnuItemCopy_Text = new ToolStripMenuItem("Копировать как текст");
+            mnuItemCopy_Text.Click += MnuItem_Copy_Text_Click;
+            mnuItemCopy.DropDownItems.Add(mnuItemCopy_Text);
+            ToolStripMenuItem mnuItemCopy_Rtf = new ToolStripMenuItem("Копировать как RTF");
+            mnuItemCopy_Rtf.Click += MnuItem_Copy_Rtf_Click;
+            mnuItemCopy.DropDownItems.Add(mnuItemCopy_Rtf);
+            ToolStripMenuItem mnuItemPaste = new ToolStripMenuItem("Вставка");
             cxm.Items.Add(mnuItemPaste);
+            ToolStripMenuItem mnuItemPaste_Paste = new ToolStripMenuItem("Вставить (CTRL-V)");
+            mnuItemPaste_Paste.Click += MnuItem_Paste_Paste_Click;
+            mnuItemPaste.DropDownItems.Add(mnuItemPaste_Paste);
+            ToolStripMenuItem mnuItemPaste_Paste_Text = new ToolStripMenuItem("Вставить как текст");
+            mnuItemPaste_Paste_Text.Click += MnuItem_Paste_Text_Click;
+            mnuItemPaste.DropDownItems.Add(mnuItemPaste_Paste_Text);
             ToolStripMenuItem mnuItemDelete = new ToolStripMenuItem("Удалить");
             mnuItemDelete.Click += MnuItem_Delete_Click;
             cxm.Items.Add(mnuItemDelete);
@@ -323,16 +337,50 @@ namespace TextEditorNS
             txtBox.SelectedText = "";
         }
 
-        // Контекстное меню. Копировать.
-        private void MnuItem_Copy_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Контекстное меню. Копировать.
+        /// </summary>
+        private void MnuItem_Copy_Copy_Click(object sender, EventArgs e)
         {
             if (txtBox.SelectedText.Length != 0) txtBox.Copy();
         }
 
-        // Контекстное меню. Вставить.
-        private void MnuItem_Paste_Click(object sender, EventArgs e)
+        /// <summary>
+        /// Контекстное меню. Копировать как текст.
+        /// </summary>
+        private void MnuItem_Copy_Text_Click(object sender, EventArgs e)
+        {
+            if (txtBox.SelectedText.Length != 0)
+            {
+                Clipboard.SetText(txtBox.SelectedText, TextDataFormat.Text);
+            }
+        }
+
+        /// <summary>
+        /// Контекстное меню. Копировать как RTF.
+        /// </summary>
+        private void MnuItem_Copy_Rtf_Click(object sender, EventArgs e)
+        {
+            if (txtBox.SelectedText.Length != 0)
+            {
+                Clipboard.SetText(txtBox.SelectedRtf, TextDataFormat.Rtf);
+            }
+        }
+
+        /// <summary>
+        /// Контекстное меню. Вставить.
+        /// </summary>
+        private void MnuItem_Paste_Paste_Click(object sender, EventArgs e)
         {
             txtBox.Paste();
+        }
+
+        /// <summary>
+        /// Контекстное меню. Вставить как текст.
+        /// </summary>
+        private void MnuItem_Paste_Text_Click(object sender, EventArgs e)
+        {
+            txtBox.SelectedText = Clipboard.GetText(TextDataFormat.Text);
         }
 
         // Контекстное меню. Удалить.
@@ -699,7 +747,9 @@ namespace TextEditorNS
             txtBox.Focus();
         }
 
-        // Сделать каждую первую букву в тексте заглавной
+        /// <summary>
+        /// Сделать каждую первую букву в выделенном тексте заглавной
+        /// </summary>
         private void MnuTextChangeZebra_Click(object sender, EventArgs e)
         {
             ResetControls();
@@ -712,8 +762,10 @@ namespace TextEditorNS
 
             foreach (Match m in Regex.Matches(txtBox.SelectedText, @"\S+", RegexOptions.Multiline))
             {
-                txtBox.Select(start + m.Index, 1);
-                txtBox.SelectedText = txtBox.SelectedText.ToUpper();
+                txtBox.Select(start + m.Index, m.Length);
+                StringBuilder txt = new StringBuilder(txtBox.SelectedText.ToLower());
+                txt[0] = txt[0].ToString().ToUpper()[0];
+                txtBox.SelectedText = txt.ToString();
             }
 
             txtBox.Select(start, len);
@@ -726,23 +778,35 @@ namespace TextEditorNS
             txtBox.Focus();
         }
 
-        // Все буквы к прописным
+        /// <summary>
+        /// Все буквы к прописным
+        /// </summary>
         private void MnuTextToLower_Click(object sender, EventArgs e)
         {
             ResetControls();
 
+            int start = txtBox.SelectionStart;
+            int len = txtBox.SelectionLength;
+
             txtBox.SelectedText = txtBox.SelectedText.ToLower();
+            txtBox.Select(start, len);
 
             ShowSelectionProperties();
             txtBox.Focus();
         }
 
-        // Все буквы к заглавным
+        /// <summary>
+        /// Все буквы к заглавным
+        /// </summary>
         private void MnuTextToUpper_Click(object sender, EventArgs e)
         {
             ResetControls();
 
+            int start = txtBox.SelectionStart;
+            int len = txtBox.SelectionLength;
+
             txtBox.SelectedText = txtBox.SelectedText.ToUpper();
+            txtBox.Select(start, len);
 
             ShowSelectionProperties();
             txtBox.Focus();
